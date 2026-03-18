@@ -124,7 +124,9 @@ func GetRepoInfo(repoRoot string) (RepoInfo, error) {
 	if err != nil {
 		return info, fmt.Errorf("repository has no commits")
 	}
-	fmt.Sscanf(strings.TrimSpace(countOut), "%d", &info.TotalCommits)
+	if _, err := fmt.Sscanf(strings.TrimSpace(countOut), "%d", &info.TotalCommits); err != nil {
+		return info, fmt.Errorf("could not parse commit count: %w", err)
+	}
 	if info.TotalCommits == 0 {
 		return info, fmt.Errorf("repository has no commits")
 	}
@@ -206,7 +208,9 @@ func GetContributors(repoRoot string) ([]Contributor, error) {
 			continue
 		}
 		var count int
-		fmt.Sscanf(m[1], "%d", &count)
+		if _, err := fmt.Sscanf(m[1], "%d", &count); err != nil {
+			continue
+		}
 		contributors = append(contributors, Contributor{
 			Commits: count,
 			Name:    strings.TrimSpace(m[2]),

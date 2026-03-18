@@ -3,10 +3,13 @@ name: Release
 on:
   push:
     tags:
-      - "v*"   # triggers on v0.1.0, v1.2.3, etc.
+      - "v*"
 
 permissions:
   contents: write
+
+env:                                          # ← move it here, top level
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   release:
@@ -17,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # needed for goreleaser changelog
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -35,6 +38,6 @@ jobs:
           version:      latest
           args:         release --clean
         env:
-          GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_TOKEN:  ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          SCOOP_TAP_TOKEN:     ${{ secrets.SCOOP_TAP_TOKEN }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          SCOOP_TAP_TOKEN:    ${{ secrets.SCOOP_TAP_TOKEN }}
