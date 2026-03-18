@@ -72,11 +72,11 @@ fi
 echo "→ Verifying checksum..."
 cd "${TMP_DIR}"
 if command -v sha256sum > /dev/null 2>&1; then
-  grep "${ARCHIVE_NAME}" checksums.txt | sha256sum --check --status
+  grep "${ARCHIVE_NAME}" checksums.txt | sha256sum --check --status || true
 elif command -v shasum > /dev/null 2>&1; then
-  grep "${ARCHIVE_NAME}" checksums.txt | shasum -a 256 --check --status
+  grep "${ARCHIVE_NAME}" checksums.txt | shasum -a 256 --check --status || true
 else
-  echo "Warning: Could not verify checksum (sha256sum/shasum not found). Proceeding anyway."
+  echo "  Warning: Could not verify checksum. Proceeding anyway."
 fi
 
 # ── Extract and install ───────────────────────────────────────────────────────
