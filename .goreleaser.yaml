@@ -25,24 +25,15 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/talhakhalidmtk/kinlyze-library/cmd.version={{.Version}}
-      - -X github.com/talhakhalidmtk/kinlyze-library/cmd.commit={{.Commit}}
-      - -X github.com/talhakhalidmtk/kinlyze-library/cmd.date={{.Date}}
 
 archives:
   - formats:
       - tar.gz
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_
-      {{- .Os }}_
-      {{- .Arch }}
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         formats:
           - zip
-    files:
-      - README.md
-      - LICENSE
 
 checksum:
   name_template: "checksums.txt"
@@ -54,59 +45,8 @@ changelog:
       - "^docs:"
       - "^test:"
       - "^chore:"
-      - merge conflict
-      - Merge pull request
-      - Merge remote-tracking branch
 
 release:
   github:
     owner: talhakhalidmtk
     name:  kinlyze-library
-  name_template: "{{.ProjectName}} {{.Version}}"
-  header: |
-    ## Kinlyze {{ .Version }}
-
-    Map knowledge concentration risk in any Git repository.
-    No source code is read. Everything runs locally.
-
-    ```bash
-    # macOS (Homebrew)
-    brew upgrade kinlyze
-
-    # Linux / macOS (direct)
-    curl -sSL https://kinlyze.com/install.sh | sh
-
-    # Windows (Scoop)
-    scoop update kinlyze
-    ```
-  footer: |
-    **Full changelog**: https://github.com/talhakhalidmtk/kinlyze-library/compare/{{ .PreviousTag }}...{{ .Tag }}
-
-brews:
-  - name: kinlyze
-    homepage: https://kinlyze.com
-    description: "Analyze the kin behind your code — map knowledge concentration risk in any Git repo."
-    license: MIT
-    repository:
-      owner: talhakhalidmtk
-      name:  homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    commit_author:
-      name:  kinlyze-bot
-      email: hello@kinlyze.com
-    install: |
-      bin.install "kinlyze"
-    test: |
-      system "#{bin}/kinlyze", "version"
-
-scoops:
-  - name: kinlyze
-    homepage: https://kinlyze.com
-    description: "Analyze the kin behind your code — map knowledge concentration risk in any Git repo."
-    license: MIT
-    repository:
-      owner: talhakhalidmtk
-      name:  scoop-bucket
-      branch: main
-      token: "{{ .Env.SCOOP_TAP_TOKEN }}"
