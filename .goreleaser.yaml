@@ -61,7 +61,7 @@ changelog:
 release:
   github:
     owner: kinlyze
-    name:  kinlyze
+    name:  kinlyze-library
   name_template: "{{.ProjectName}} {{.Version}}"
   header: |
     ## Kinlyze {{ .Version }}
