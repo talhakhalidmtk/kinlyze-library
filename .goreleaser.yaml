@@ -24,9 +24,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X github.com/kinlyze/kinlyze/cmd.version={{.Version}}
-      - -X github.com/kinlyze/kinlyze/cmd.commit={{.Commit}}
-      - -X github.com/kinlyze/kinlyze/cmd.date={{.Date}}
+      - -X github.com/talhakhalidmtk/kinlyze-library/cmd.version={{.Version}}
+      - -X github.com/talhakhalidmtk/kinlyze-library/cmd.commit={{.Commit}}
+      - -X github.com/talhakhalidmtk/kinlyze-library/cmd.date={{.Date}}
 
 archives:
   - formats:
@@ -60,7 +60,7 @@ changelog:
 
 release:
   github:
-    owner: kinlyze
+    owner: talhakhalidmtk
     name:  kinlyze-library
   name_template: "{{.ProjectName}} {{.Version}}"
   header: |
@@ -80,7 +80,7 @@ release:
     scoop update kinlyze
     ```
   footer: |
-    **Full changelog**: https://github.com/kinlyze/kinlyze/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full changelog**: https://github.com/talhakhalidmtk/kinlyze-library/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 brews:
   - name: kinlyze
@@ -88,7 +88,7 @@ brews:
     description: "Analyze the kin behind your code — map knowledge concentration risk in any Git repo."
     license: MIT
     repository:
-      owner: kinlyze
+      owner: talhakhalidmtk
       name:  homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
@@ -106,7 +106,7 @@ scoops:
     description: "Analyze the kin behind your code — map knowledge concentration risk in any Git repo."
     license: MIT
     repository:
-      owner: kinlyze
+      owner: talhakhalidmtk
       name:  scoop-bucket
       branch: main
       token: "{{ .Env.SCOOP_TAP_TOKEN }}"

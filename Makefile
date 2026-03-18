@@ -3,9 +3,9 @@ VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "de
 COMMIT   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE     := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS  := -s -w \
-	-X github.com/kinlyze/kinlyze/cmd.version=$(VERSION) \
-	-X github.com/kinlyze/kinlyze/cmd.commit=$(COMMIT) \
-	-X github.com/kinlyze/kinlyze/cmd.date=$(DATE)
+	-X github.com/talhakhalidmtk/kinlyze-library/cmd.version=$(VERSION) \
+	-X github.com/talhakhalidmtk/kinlyze-library/cmd.commit=$(COMMIT) \
+	-X github.com/talhakhalidmtk/kinlyze-library/cmd.date=$(DATE)
 
 # Directories
 DIST     := dist

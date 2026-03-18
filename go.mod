@@ -1,4 +1,4 @@
-module github.com/kinlyze/kinlyze
+module github.com/talhakhalidmtk/kinlyze-library
 
 go 1.21
 

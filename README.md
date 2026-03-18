@@ -80,7 +80,7 @@ scoop update kinlyze
 
 ### Windows — Direct download
 
-1. Go to [github.com/kinlyze/kinlyze/releases/latest](https://github.com/kinlyze/kinlyze/releases/latest)
+1. Go to [github.com/talhakhalidmtk/kinlyze-library/releases/latest](https://github.com/talhakhalidmtk/kinlyze-library/releases/latest)
 2. Download `kinlyze_VERSION_windows_amd64.zip`
 3. Extract `kinlyze.exe`
 4. Move to a directory on your `PATH` (e.g. `C:\Windows\System32\` or `C:\Users\YourName\bin\`)
@@ -92,17 +92,17 @@ scoop update kinlyze
 
 ```bash
 # amd64 (most servers and desktops)
-curl -sSLO https://github.com/kinlyze/kinlyze/releases/latest/download/kinlyze_VERSION_linux_amd64.tar.gz
+curl -sSLO https://github.com/talhakhalidmtk/kinlyze-library/releases/latest/download/kinlyze_VERSION_linux_amd64.tar.gz
 tar -xzf kinlyze_VERSION_linux_amd64.tar.gz
 sudo mv kinlyze /usr/local/bin/
 
 # arm64 (Raspberry Pi, AWS Graviton, etc.)
-curl -sSLO https://github.com/kinlyze/kinlyze/releases/latest/download/kinlyze_VERSION_linux_arm64.tar.gz
+curl -sSLO https://github.com/talhakhalidmtk/kinlyze-library/releases/latest/download/kinlyze_VERSION_linux_arm64.tar.gz
 tar -xzf kinlyze_VERSION_linux_arm64.tar.gz
 sudo mv kinlyze /usr/local/bin/
 ```
 
-Replace `VERSION` with the latest version number from [releases](https://github.com/kinlyze/kinlyze/releases).
+Replace `VERSION` with the latest version number from [releases](https://github.com/talhakhalidmtk/kinlyze-library/releases).
 
 ---
 
@@ -111,13 +111,13 @@ Replace `VERSION` with the latest version number from [releases](https://github.
 Requires Go 1.21+.
 
 ```bash
-go install github.com/kinlyze/kinlyze@latest
+go install github.com/talhakhalidmtk/kinlyze-library@latest
 ```
 
 Or clone and build:
 
 ```bash
-git clone https://github.com/kinlyze/kinlyze
+git clone https://github.com/talhakhalidmtk/kinlyze-library
 cd kinlyze
 make build
 sudo make install
@@ -399,7 +399,7 @@ jobs:
 ### Build and run
 
 ```bash
-git clone https://github.com/kinlyze/kinlyze
+git clone https://github.com/talhakhalidmtk/kinlyze-library
 cd kinlyze
 
 # Build for current platform
@@ -470,5 +470,5 @@ MIT © [Kinlyze](https://kinlyze.com)
 
 - Website: [kinlyze.com](https://kinlyze.com)
 - Wishlist: [kinlyze.com/#waitlist](https://kinlyze.com/#waitlist)
-- Issues: [github.com/kinlyze/kinlyze/issues](https://github.com/kinlyze/kinlyze/issues)
+- Issues: [github.com/talhakhalidmtk/kinlyze-library/issues](https://github.com/talhakhalidmtk/kinlyze-library/issues)
 - Python package: `pip install kinlyze`

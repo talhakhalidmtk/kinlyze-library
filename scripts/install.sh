@@ -3,7 +3,7 @@
 # Supports: macOS (Intel + Apple Silicon), Linux (amd64 + arm64)
 set -e
 
-REPO="kinlyze/kinlyze"
+REPO="talhakhalidmtk/kinlyze-library"
 BINARY="kinlyze"
 INSTALL_DIR="${KINLYZE_INSTALL_DIR:-/usr/local/bin}"
 GITHUB_API="https://api.github.com/repos/${REPO}/releases/latest"

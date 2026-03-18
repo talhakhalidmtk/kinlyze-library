@@ -1,6 +1,6 @@
 package main
 
-import "github.com/kinlyze/kinlyze/cmd"
+import "github.com/talhakhalidmtk/kinlyze-library/cmd"
 
 func main() {
 	cmd.Execute()

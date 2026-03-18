@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kinlyze/kinlyze/internal/scoring"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/scoring"
 )
 
 // ── Color ─────────────────────────────────────────────────────────────────────
@@ -236,18 +236,20 @@ func renderSummary(r *scoring.Result) {
 
 	fmt.Printf("  %s  %s critical    %s  %s high    %s  %s medium    %s  %s healthy\n",
 		riskEmoji["critical"], pad(red(bold(fmt.Sprintf("%d", s.Critical))), 4),
-		riskEmoji["high"],     pad(yellow(fmt.Sprintf("%d", s.High)), 4),
-		riskEmoji["medium"],   pad(yellow(fmt.Sprintf("%d", s.Medium)), 4),
-		riskEmoji["low"],      green(fmt.Sprintf("%d", s.Low)),
+		riskEmoji["high"], pad(yellow(fmt.Sprintf("%d", s.High)), 4),
+		riskEmoji["medium"], pad(yellow(fmt.Sprintf("%d", s.Medium)), 4),
+		riskEmoji["low"], green(fmt.Sprintf("%d", s.Low)),
 	)
 
 	// Proportion bar
 	barWidth := 56
 	cw := int(math.Round(float64(s.Critical) / float64(total) * float64(barWidth)))
-	hw := int(math.Round(float64(s.High)     / float64(total) * float64(barWidth)))
-	mw := int(math.Round(float64(s.Medium)   / float64(total) * float64(barWidth)))
+	hw := int(math.Round(float64(s.High) / float64(total) * float64(barWidth)))
+	mw := int(math.Round(float64(s.Medium) / float64(total) * float64(barWidth)))
 	lw := barWidth - cw - hw - mw
-	if lw < 0 { lw = 0 }
+	if lw < 0 {
+		lw = 0
+	}
 
 	propBar := ""
 	if !noColor {
@@ -290,25 +292,25 @@ func renderHeatmap(modules []scoring.Module, top int) {
 
 	fmt.Printf("  %s  %s  %s  %s  %s  %s  %s  %s  %s\n",
 		"   ",
-		pad(grey("MODULE"),   cModule),
-		pad(grey("BF"),       cBF),
-		pad(grey("↕"),        cTrend),
-		pad(grey("FILES"),    cFiles),
-		pad(grey("COMMITS"),  cCommits),
+		pad(grey("MODULE"), cModule),
+		pad(grey("BF"), cBF),
+		pad(grey("↕"), cTrend),
+		pad(grey("FILES"), cFiles),
+		pad(grey("COMMITS"), cCommits),
 		pad(grey("PRIMARY OWNER"), cOwner),
-		pad(grey("OWNS"),     cPct+14),
+		pad(grey("OWNS"), cPct+14),
 		grey("LAST ACTIVE"),
 	)
 	fmt.Printf("  %s\n", div())
 
 	for _, m := range display {
 		emoji := riskEmoji[m.RiskLevel]
-		mod   := m.Module
+		mod := m.Module
 		if len(mod) > cModule-1 {
 			mod = "…" + mod[len(mod)-(cModule-2):]
 		}
 
-		bfStr    := risk_col(m.RiskLevel, fmt.Sprintf("%d", m.BusFactor))
+		bfStr := risk_col(m.RiskLevel, fmt.Sprintf("%d", m.BusFactor))
 		trendStr := trendColored(m.Trend)
 		ownerStr := m.PrimaryOwner
 		if len(ownerStr) > cOwner-1 {
@@ -320,10 +322,10 @@ func renderHeatmap(modules []scoring.Module, top int) {
 
 		fmt.Printf("  %s  %s  %s  %s  %s  %s  %s  %s %s  %s\n",
 			emoji,
-			pad(white(mod),    cModule),
-			pad(bfStr,         cBF),
-			pad(trendStr,      cTrend),
-			pad(grey(fmt.Sprintf("%d", m.FileCount)),   cFiles),
+			pad(white(mod), cModule),
+			pad(bfStr, cBF),
+			pad(trendStr, cTrend),
+			pad(grey(fmt.Sprintf("%d", m.FileCount)), cFiles),
 			pad(grey(fmt.Sprintf("%d", m.CommitCount)), cCommits),
 			pad(white(ownerStr), cOwner),
 			pctBar, pad(pctStr, cPct),
@@ -400,8 +402,8 @@ func renderBusFactor(modules []scoring.Module) {
 			limit = len(owned)
 		}
 		for _, m := range owned[:limit] {
-			pctBar  := bar(m.PrimaryPct, 20)
-			pctStr  := riskColor(m.RiskLevel, fmt.Sprintf("%.1f%%", m.PrimaryPct))
+			pctBar := bar(m.PrimaryPct, 20)
+			pctStr := riskColor(m.RiskLevel, fmt.Sprintf("%.1f%%", m.PrimaryPct))
 
 			mod := m.Module
 			if len(mod) > 38 {
@@ -451,10 +453,10 @@ func renderDeveloperProfiles(developers []scoring.Developer) {
 	)
 
 	fmt.Printf("  %s  %s  %s  %s  %s\n",
-		pad(grey("DEVELOPER"),     cName),
-		pad(grey("KNOWLEDGE"),     cPct+14),
+		pad(grey("DEVELOPER"), cName),
+		pad(grey("KNOWLEDGE"), cPct+14),
 		pad(grey("IF THEY LEAVE"), cRisk),
-		pad(grey("INACTIVE"),      cInactive),
+		pad(grey("INACTIVE"), cInactive),
 		grey("MODULES OWNED"),
 	)
 	fmt.Printf("  %s\n", div())
@@ -470,9 +472,9 @@ func renderDeveloperProfiles(developers []scoring.Developer) {
 			name = name[:cName-1]
 		}
 
-		pct     := dev.KnowledgePct
-		pctBar  := bar(math.Min(pct, 50), 12) // cap visual at 50%
-		pctStr  := pad(riskColor(dev.Risk, fmt.Sprintf("%.1f%%", pct)), cPct)
+		pct := dev.KnowledgePct
+		pctBar := bar(math.Min(pct, 50), 12) // cap visual at 50%
+		pctStr := pad(riskColor(dev.Risk, fmt.Sprintf("%.1f%%", pct)), cPct)
 		riskStr := pad(riskColor(dev.Risk, strings.ToUpper(dev.Risk)), cRisk)
 		inactStr := fmtInactive(dev.DaysInactive)
 
@@ -537,7 +539,7 @@ func renderAlerts(alerts []scoring.Alert) {
 	fmt.Println()
 	for _, alert := range alerts {
 		icon := sevIcon[alert.Severity]
-		sev  := pad(riskColor(alert.Severity, strings.ToUpper(alert.Severity)), 10)
+		sev := pad(riskColor(alert.Severity, strings.ToUpper(alert.Severity)), 10)
 		title := bold(white(alert.Title))
 
 		sevIconColored := ""

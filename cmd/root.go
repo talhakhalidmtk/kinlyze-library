@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kinlyze/kinlyze/internal/git"
-	"github.com/kinlyze/kinlyze/internal/renderer"
-	"github.com/kinlyze/kinlyze/internal/scoring"
 	"github.com/spf13/cobra"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/git"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/renderer"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/scoring"
 )
 
 var version = "0.1.0" // set by ldflags at build time
@@ -128,12 +128,12 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&flagRepo,       "repo",         "r", ".",   "Path to git repository (default: current directory)")
-	rootCmd.Flags().IntVarP   (&flagDays,        "days",         "d", 365,   "Days of history to analyze")
-	rootCmd.Flags().IntVarP   (&flagTop,         "top",          "t", 0,     "Show only top N riskiest modules (0 = all)")
-	rootCmd.Flags().IntVar    (&flagMinCommits,   "min-commits",      2,     "Minimum commits for a file to be included (filters noise)")
-	rootCmd.Flags().BoolVar   (&flagNoColor,     "no-color",         false,  "Disable colored output")
-	rootCmd.Flags().BoolVar   (&flagJSON,        "json",             false,  "Output raw JSON")
+	rootCmd.Flags().StringVarP(&flagRepo, "repo", "r", ".", "Path to git repository (default: current directory)")
+	rootCmd.Flags().IntVarP(&flagDays, "days", "d", 365, "Days of history to analyze")
+	rootCmd.Flags().IntVarP(&flagTop, "top", "t", 0, "Show only top N riskiest modules (0 = all)")
+	rootCmd.Flags().IntVar(&flagMinCommits, "min-commits", 2, "Minimum commits for a file to be included (filters noise)")
+	rootCmd.Flags().BoolVar(&flagNoColor, "no-color", false, "Disable colored output")
+	rootCmd.Flags().BoolVar(&flagJSON, "json", false, "Output raw JSON")
 
 	rootCmd.AddCommand(versionCmd)
 }

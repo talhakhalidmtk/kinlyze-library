@@ -13,22 +13,22 @@ class Kinlyze < Formula
 
   on_macos do
     on_intel do
-      url      "https://github.com/kinlyze/kinlyze/releases/download/v#{version}/kinlyze_#{version}_darwin_amd64.tar.gz"
+      url      "https://github.com/talhakhalidmtk/kinlyze-library/releases/download/v#{version}/kinlyze_#{version}_darwin_amd64.tar.gz"
       sha256   "REPLACE_WITH_ACTUAL_SHA256_FROM_GORELEASER"
     end
     on_arm do
-      url      "https://github.com/kinlyze/kinlyze/releases/download/v#{version}/kinlyze_#{version}_darwin_arm64.tar.gz"
+      url      "https://github.com/talhakhalidmtk/kinlyze-library/releases/download/v#{version}/kinlyze_#{version}_darwin_arm64.tar.gz"
       sha256   "REPLACE_WITH_ACTUAL_SHA256_FROM_GORELEASER"
     end
   end
 
   on_linux do
     on_intel do
-      url      "https://github.com/kinlyze/kinlyze/releases/download/v#{version}/kinlyze_#{version}_linux_amd64.tar.gz"
+      url      "https://github.com/talhakhalidmtk/kinlyze-library/releases/download/v#{version}/kinlyze_#{version}_linux_amd64.tar.gz"
       sha256   "REPLACE_WITH_ACTUAL_SHA256_FROM_GORELEASER"
     end
     on_arm do
-      url      "https://github.com/kinlyze/kinlyze/releases/download/v#{version}/kinlyze_#{version}_linux_arm64.tar.gz"
+      url      "https://github.com/talhakhalidmtk/kinlyze-library/releases/download/v#{version}/kinlyze_#{version}_linux_arm64.tar.gz"
       sha256   "REPLACE_WITH_ACTUAL_SHA256_FROM_GORELEASER"
     end
   end

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kinlyze/kinlyze/internal/git"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/git"
 )
 
 // ── Weights ───────────────────────────────────────────────────────────────────
@@ -380,10 +380,10 @@ func AnalyzeRepo(repoRoot string, sinceDays, minCommits int, progressFn func(str
 
 	// ── Per-file scoring ──────────────────────────────────────────────────────
 	type moduleAccum struct {
-		scores     map[string]float64
-		fileCount  int
+		scores      map[string]float64
+		fileCount   int
 		commitCount int
-		lastActive time.Time
+		lastActive  time.Time
 	}
 
 	moduleMap := make(map[string]*moduleAccum)
@@ -462,7 +462,7 @@ func AnalyzeRepo(repoRoot string, sinceDays, minCommits int, progressFn func(str
 	// ── Trend windows ─────────────────────────────────────────────────────────
 	p("Computing risk trends...")
 	recentFC := git.LoadCommitsWindow(repoRoot, 90, 0)
-	priorFC  := git.LoadCommitsWindow(repoRoot, 180, 90)
+	priorFC := git.LoadCommitsWindow(repoRoot, 180, 90)
 
 	quickBF := func(fc map[string][]git.Commit, module string) (int, bool) {
 		mScores := make(map[string]float64)
@@ -515,7 +515,7 @@ func AnalyzeRepo(repoRoot string, sinceDays, minCommits int, progressFn func(str
 		sort.Slice(ranked, func(i, j int) bool { return ranked[i].score > ranked[j].score })
 
 		primaryEmail := ranked[0].email
-		primaryName  := canonicalNames[primaryEmail]
+		primaryName := canonicalNames[primaryEmail]
 		if primaryName == "" {
 			primaryName = nameFromEmail(primaryEmail)
 		}
@@ -578,7 +578,7 @@ func AnalyzeRepo(repoRoot string, sinceDays, minCommits int, progressFn func(str
 
 	var developers []Developer
 	for canonicalEmail, total := range devTotals {
-		pct  := round1((total / grandTotal) * 100.0)
+		pct := round1((total / grandTotal) * 100.0)
 		name := canonicalNames[canonicalEmail]
 		if name == "" {
 			name = nameFromEmail(canonicalEmail)
@@ -679,7 +679,7 @@ func buildAlerts(modules []Module, developers []Developer) []Alert {
 		}
 	}
 	for owner, mods := range bf1ByOwner {
-		count    := len(mods)
+		count := len(mods)
 		examples := joinModules(mods, 3)
 		alerts = append(alerts, Alert{
 			Severity: "critical",
@@ -699,7 +699,7 @@ func buildAlerts(modules []Module, developers []Developer) []Alert {
 		}
 	}
 	for owner, mods := range highConcByOwner {
-		count    := len(mods)
+		count := len(mods)
 		examples := joinModules(mods, 3)
 		alerts = append(alerts, Alert{
 			Severity: "high",
