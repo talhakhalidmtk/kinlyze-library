@@ -1,0 +1,70 @@
+# ── Binary output ─────────────────────────────────────────
+kinlyze
+kinlyze.exe
+dist/
+
+# ── Go ───────────────────────────────────────────────────
+*.test
+*.out
+coverage.out
+coverage.html
+
+go.work
+go.work.sum
+
+# Build artifacts
+bin/
+pkg/
+
+# ── Environment ──────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ── OS ──────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── IDEs ────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Logs ────────────────────────────────────────────────
+*.log
+
+# ── Temp ────────────────────────────────────────────────
+*.tmp
+*.bak
+*.old
+
+# ── Binaries (generic) ──────────────────────────────────
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ── Cache ───────────────────────────────────────────────
+.cache/
+*.cache
+
+# ── Local scratch / Claude Code workspace ───────────────
+.txt
+/.claude
+
+# ── Kinlyze runtime files ────────────────────────────────
+kinlyze-report.json        # CI output artifact from examples in README
+last-result.json           # future push --retry cache file
+
+# ── Go release artifacts ─────────────────────────────────
+*.tar.gz
+*.zip
