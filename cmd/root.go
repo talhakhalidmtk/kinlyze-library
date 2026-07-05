@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/auth"
 	"github.com/talhakhalidmtk/kinlyze-library/internal/git"
 	"github.com/talhakhalidmtk/kinlyze-library/internal/renderer"
 	"github.com/talhakhalidmtk/kinlyze-library/internal/scoring"
+	"github.com/talhakhalidmtk/kinlyze-library/internal/upload"
 )
 
 var version = "0.3.0" // set by ldflags at build time
@@ -23,7 +25,33 @@ var (
 	flagJSON          bool
 	flagExcludeBots   bool
 	flagExcludeEmails []string
+	flagLoginToken    string
 )
+
+// isLoggedIn reports whether a Dashboard token is saved locally.
+func isLoggedIn() bool {
+	_, err := auth.LoadToken()
+	return err == nil
+}
+
+// maybeSyncReport uploads the report if a Dashboard token is saved. Sync is
+// best-effort: a failed or missing token never blocks or fails local report
+// generation, and status goes to stderr so it doesn't corrupt a redirected
+// `kinlyze --json > report.json`.
+func maybeSyncReport(result *scoring.Result) {
+	if token, err := auth.LoadToken(); err == nil {
+		upload.Report(token, result.RepoInfo.Name, result)
+	}
+}
+
+// outputJSON prints the JSON report and syncs it to the Dashboard if logged in.
+func outputJSON(result *scoring.Result) error {
+	if err := renderer.RenderJSON(result); err != nil {
+		return err
+	}
+	maybeSyncReport(result)
+	return nil
+}
 
 // ── Shared analysis helper ────────────────────────────────────────────────────
 
@@ -125,9 +153,10 @@ Run 'kinlyze' for a full scan, or use subcommands for specific sections:
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
-		renderer.Render(result, flagTop)
+		renderer.Render(result, flagTop, isLoggedIn())
+		maybeSyncReport(result)
 		return nil
 	},
 }
@@ -141,9 +170,10 @@ var scanCmd = &cobra.Command{
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
-		renderer.Render(result, flagTop)
+		renderer.Render(result, flagTop, isLoggedIn())
+		maybeSyncReport(result)
 		return nil
 	},
 }
@@ -160,11 +190,12 @@ Best for: quick health checks, CI pipeline reports, sharing with leadership.`,
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
 		renderer.RenderSummaryOnly(result)
 		renderer.RenderInsights(result)
 		renderer.RenderAlerts(result)
+		renderer.RenderFooter(isLoggedIn())
 		return nil
 	},
 }
@@ -181,10 +212,11 @@ Best for: identifying which specific modules need attention.`,
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
 		renderer.RenderSummaryOnly(result)
 		renderer.RenderHeatmap(result, flagTop)
+		renderer.RenderFooter(isLoggedIn())
 		return nil
 	},
 }
@@ -201,10 +233,11 @@ Best for: identifying which people to prioritize for knowledge transfer.`,
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
 		renderer.RenderSummaryOnly(result)
 		renderer.RenderBusFactor(result)
+		renderer.RenderFooter(isLoggedIn())
 		return nil
 	},
 }
@@ -222,10 +255,11 @@ Best for: team planning, hiring decisions, onboarding prioritization.`,
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
 		renderer.RenderSummaryOnly(result)
 		renderer.RenderDeveloperProfiles(result)
+		renderer.RenderFooter(isLoggedIn())
 		return nil
 	},
 }
@@ -242,10 +276,11 @@ Best for: detecting feature-level dependency risk that module-level analysis mis
 		result := runAnalysis(cmd)
 
 		if flagJSON {
-			return renderer.RenderJSON(result)
+			return outputJSON(result)
 		}
 		renderer.RenderSummaryOnly(result)
 		renderer.RenderFlowRisk(result)
+		renderer.RenderFooter(isLoggedIn())
 		return nil
 	},
 }
@@ -255,6 +290,43 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("kinlyze %s\n", version)
+	},
+}
+
+var loginCmd = &cobra.Command{
+	Use:   "login",
+	Short: "Save a Dashboard token so scans sync automatically",
+	Long: `Log in with a token via 'kinlyze login --token <TOKEN>'.
+Get a token from your Kinlyze Dashboard.
+
+The token is saved to ~/.kinlyze/credentials (mode 0600). Once logged in,
+just run 'kinlyze scan' (or any command with --json) and the report lands
+on your Dashboard automatically. Run 'kinlyze logout' to remove the saved
+token.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if flagLoginToken == "" {
+			renderer.PrintError("--token is required. Get one from your Kinlyze Dashboard.")
+			os.Exit(1)
+		}
+		if err := auth.SaveToken(flagLoginToken); err != nil {
+			renderer.PrintError(fmt.Sprintf("Could not save credentials: %s", err))
+			os.Exit(1)
+		}
+		fmt.Println("\n  ✓ Logged in. Future scans will sync to your Kinlyze Dashboard.")
+		return nil
+	},
+}
+
+var logoutCmd = &cobra.Command{
+	Use:   "logout",
+	Short: "Remove the saved Dashboard token",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := auth.DeleteToken(); err != nil {
+			renderer.PrintError(fmt.Sprintf("Could not remove credentials: %s", err))
+			os.Exit(1)
+		}
+		fmt.Println("\n  ✓ Logged out. Scans are fully local again.")
+		return nil
 	},
 }
 
@@ -281,6 +353,8 @@ func init() {
 	addSharedFlags(developersCmd)
 	addSharedFlags(flowsCmd)
 
+	loginCmd.Flags().StringVar(&flagLoginToken, "token", "", "Dashboard API token")
+
 	// Register subcommands
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(insightsCmd)
@@ -289,6 +363,8 @@ func init() {
 	rootCmd.AddCommand(developersCmd)
 	rootCmd.AddCommand(flowsCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(logoutCmd)
 }
 
 // Execute runs the root command.
