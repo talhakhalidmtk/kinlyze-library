@@ -866,6 +866,14 @@ func RenderJSON(r *scoring.Result) error {
 	return enc.Encode(r)
 }
 
+// RenderJSONMulti prints multiple results as an indented JSON array.
+// Used when --repo resolves to more than one repository.
+func RenderJSONMulti(results []*scoring.Result) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(results)
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func filterModules(modules []scoring.Module, fn func(scoring.Module) bool) []scoring.Module {

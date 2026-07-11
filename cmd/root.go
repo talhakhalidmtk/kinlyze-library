@@ -2,9 +2,13 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/talhakhalidmtk/kinlyze-library/internal/auth"
@@ -17,7 +21,9 @@ import (
 var version = "0.3.0" // set by ldflags at build time
 
 var (
-	flagRepo          string
+	flagRepo          string   // single-repo commands (insights, heatmap, busfactor, developers, flows)
+	flagRepos         []string // root/scan: comma-separated, supports multiple repos
+	flagDiscoverPath  string   // root/scan: search this path's subdirectories for git repos
 	flagDays          int
 	flagTop           int
 	flagMinCommits    int
@@ -53,11 +59,23 @@ func outputJSON(result *scoring.Result) error {
 	return nil
 }
 
+// outputJSONMulti prints a JSON array of reports (one per repo) and syncs
+// each to the Dashboard if logged in.
+func outputJSONMulti(results []*scoring.Result) error {
+	if err := renderer.RenderJSONMulti(results); err != nil {
+		return err
+	}
+	for _, result := range results {
+		maybeSyncReport(result)
+	}
+	return nil
+}
+
 // ── Shared analysis helper ────────────────────────────────────────────────────
 
-// runAnalysis resolves the repo, runs the full scoring pipeline, and returns
+// runAnalysis resolves repoInput, runs the full scoring pipeline, and returns
 // the result. Used by every command/subcommand to avoid duplicating setup logic.
-func runAnalysis(cmd *cobra.Command) *scoring.Result {
+func runAnalysis(repoInput string) *scoring.Result {
 	// Apply flags
 	if flagNoColor || flagJSON {
 		os.Setenv("NO_COLOR", "1")
@@ -77,9 +95,9 @@ func runAnalysis(cmd *cobra.Command) *scoring.Result {
 	}
 
 	// Resolve repo path
-	repoPath, err := filepath.Abs(flagRepo)
+	repoPath, err := filepath.Abs(repoInput)
 	if err != nil {
-		renderer.PrintError(fmt.Sprintf("Invalid path: %s", flagRepo))
+		renderer.PrintError(fmt.Sprintf("Invalid path: %s", repoInput))
 		os.Exit(1)
 	}
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
@@ -139,6 +157,7 @@ Run 'kinlyze' for a full scan, or use subcommands for specific sections:
   kinlyze flows        User flow risk analysis`,
 
 	Example: `  kinlyze                            Full scan of current directory
+  kinlyze --repo a,b,c               Full scan of multiple repos (requires login)
   kinlyze insights --repo ./myapp    Key insights only
   kinlyze heatmap --top 20           Top 20 riskiest modules
   kinlyze developers --days 180      Developer profiles (last 6 months)
@@ -149,16 +168,7 @@ Run 'kinlyze' for a full scan, or use subcommands for specific sections:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 
-	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
-
-		if flagJSON {
-			return outputJSON(result)
-		}
-		renderer.Render(result, flagTop, isLoggedIn())
-		maybeSyncReport(result)
-		return nil
-	},
+	RunE: runScan,
 }
 
 // ── Subcommands ───────────────────────────────────────────────────────────────
@@ -166,16 +176,164 @@ Run 'kinlyze' for a full scan, or use subcommands for specific sections:
 var scanCmd = &cobra.Command{
 	Use:   "scan",
 	Short: "Full scan — all sections (same as running kinlyze with no args)",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
+	RunE:  runScan,
+}
 
-		if flagJSON {
+// runScan powers both the root command and 'kinlyze scan'. Unlike the other
+// subcommands, it supports multiple repos: pass --repo a,b,c, or omit --repo
+// entirely to get a numbered picker over git repos found in subdirectories
+// of the current directory (when the current directory isn't a repo itself).
+func runScan(cmd *cobra.Command, args []string) error {
+	repoPaths, err := resolveRepoPaths()
+	if err != nil {
+		renderer.PrintError(err.Error())
+		os.Exit(1)
+	}
+
+	if flagJSON {
+		if len(repoPaths) == 1 {
+			result := runAnalysis(repoPaths[0])
 			return outputJSON(result)
 		}
+		var results []*scoring.Result
+		for _, repoPath := range repoPaths {
+			results = append(results, runAnalysis(repoPath))
+		}
+		return outputJSONMulti(results)
+	}
+
+	for i, repoPath := range repoPaths {
+		result := runAnalysis(repoPath)
 		renderer.Render(result, flagTop, isLoggedIn())
 		maybeSyncReport(result)
-		return nil
-	},
+		if i < len(repoPaths)-1 {
+			fmt.Println()
+		}
+	}
+	return nil
+}
+
+// errLoginRequired is returned when a Dashboard-only feature (repo discovery
+// or multi-repo scanning) is used without a saved token.
+func errLoginRequired(feature string) error {
+	return fmt.Errorf(
+		"%s requires a Kinlyze Dashboard account.\n  Run 'kinlyze login --token <TOKEN>' to enable it, or scan a single repo without this flag.",
+		feature,
+	)
+}
+
+// resolveRepoPaths returns the repo paths to scan.
+//   - --discover <path> always searches <path>'s immediate subdirectories
+//     for git repos and prompts the user to pick which to scan. Requires login.
+//   - Otherwise, --repo (comma-separated) is used as-is if given. Passing more
+//     than one repo requires login.
+//   - Otherwise, if the current directory is itself a git repo, that's the
+//     only target — same as before.
+//   - Otherwise, if git repos are found in immediate subdirectories of the
+//     current directory, the user is prompted to pick which ones to scan.
+//     This auto-discovery also requires login.
+func resolveRepoPaths() ([]string, error) {
+	if flagDiscoverPath != "" {
+		if len(flagRepos) > 0 {
+			return nil, fmt.Errorf("--discover cannot be combined with --repo")
+		}
+		if !isLoggedIn() {
+			return nil, errLoginRequired("--discover")
+		}
+		root, err := filepath.Abs(flagDiscoverPath)
+		if err != nil {
+			return nil, err
+		}
+		repos, err := discoverRepos(root)
+		if err != nil {
+			return nil, err
+		}
+		if len(repos) == 0 {
+			return nil, fmt.Errorf("no git repos found in subdirectories of %s", root)
+		}
+		return promptRepoSelection(repos)
+	}
+
+	if len(flagRepos) > 0 {
+		if len(flagRepos) > 1 && !isLoggedIn() {
+			return nil, errLoginRequired("scanning multiple repos (--repo a,b,c)")
+		}
+		return flagRepos, nil
+	}
+
+	cwd, err := filepath.Abs(".")
+	if err != nil {
+		return nil, err
+	}
+	if git.IsGitRepo(cwd) {
+		return []string{"."}, nil
+	}
+
+	if !isLoggedIn() {
+		// Fall through to "." so runAnalysis reports the usual
+		// "not a git repository" error; repo auto-discovery is a
+		// Dashboard-only feature.
+		return []string{"."}, nil
+	}
+
+	repos, err := discoverRepos(cwd)
+	if err != nil || len(repos) == 0 {
+		// Fall through to "." so runAnalysis reports the usual
+		// "not a git repository" error.
+		return []string{"."}, nil
+	}
+
+	return promptRepoSelection(repos)
+}
+
+// discoverRepos returns immediate subdirectories of root that are git repos.
+func discoverRepos(root string) ([]string, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+
+	var repos []string
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		path := filepath.Join(root, e.Name())
+		if git.IsGitRepo(path) {
+			repos = append(repos, path)
+		}
+	}
+	sort.Strings(repos)
+	return repos, nil
+}
+
+// promptRepoSelection lists discovered repos and asks the user to choose.
+func promptRepoSelection(repos []string) ([]string, error) {
+	fmt.Println("\n  No git repository here. Found these repos in subdirectories:")
+	for i, r := range repos {
+		fmt.Printf("    %d) %s\n", i+1, filepath.Base(r))
+	}
+	fmt.Print("\n  Select repos to scan (e.g. 1,3 or 'all'): ")
+
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return nil, fmt.Errorf("no repos selected")
+	}
+	if strings.EqualFold(line, "all") {
+		return repos, nil
+	}
+
+	var selected []string
+	for _, tok := range strings.Split(line, ",") {
+		tok = strings.TrimSpace(tok)
+		n, err := strconv.Atoi(tok)
+		if err != nil || n < 1 || n > len(repos) {
+			return nil, fmt.Errorf("invalid selection: %q", tok)
+		}
+		selected = append(selected, repos[n-1])
+	}
+	return selected, nil
 }
 
 var insightsCmd = &cobra.Command{
@@ -187,7 +345,7 @@ detection, noise vs runtime risk breakdown, and grouped alerts.
 
 Best for: quick health checks, CI pipeline reports, sharing with leadership.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
+		result := runAnalysis(flagRepo)
 
 		if flagJSON {
 			return outputJSON(result)
@@ -209,7 +367,7 @@ Low-impact modules (examples, templates, docs) are dimmed to reduce noise.
 
 Best for: identifying which specific modules need attention.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
+		result := runAnalysis(flagRepo)
 
 		if flagJSON {
 			return outputJSON(result)
@@ -230,7 +388,7 @@ Reveals who is a single point of failure and which modules break if they leave.
 
 Best for: identifying which people to prioritize for knowledge transfer.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
+		result := runAnalysis(flagRepo)
 
 		if flagJSON {
 			return outputJSON(result)
@@ -252,7 +410,7 @@ they control end-to-end.
 
 Best for: team planning, hiring decisions, onboarding prioritization.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
+		result := runAnalysis(flagRepo)
 
 		if flagJSON {
 			return outputJSON(result)
@@ -273,7 +431,7 @@ an entire user journey from endpoint to database.
 
 Best for: detecting feature-level dependency risk that module-level analysis misses.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		result := runAnalysis(cmd)
+		result := runAnalysis(flagRepo)
 
 		if flagJSON {
 			return outputJSON(result)
@@ -333,7 +491,6 @@ var logoutCmd = &cobra.Command{
 // ── Flag registration ─────────────────────────────────────────────────────────
 
 func addSharedFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&flagRepo, "repo", "r", ".", "Path to git repository")
 	cmd.Flags().IntVarP(&flagDays, "days", "d", 365, "Days of history to analyze")
 	cmd.Flags().IntVarP(&flagTop, "top", "t", 0, "Show only top N riskiest modules (0 = all)")
 	cmd.Flags().IntVar(&flagMinCommits, "min-commits", 2, "Minimum commits for a file to be included")
@@ -341,6 +498,20 @@ func addSharedFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&flagJSON, "json", false, "Output raw JSON (full result for all subcommands)")
 	cmd.Flags().BoolVar(&flagExcludeBots, "no-bots", true, "Exclude bot/CI commits")
 	cmd.Flags().StringSliceVar(&flagExcludeEmails, "exclude-emails", nil, "Comma-separated emails to exclude")
+}
+
+// addSingleRepoFlag registers --repo for commands that only ever operate on
+// one repository at a time.
+func addSingleRepoFlag(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&flagRepo, "repo", "r", ".", "Path to git repository")
+}
+
+// addMultiRepoFlag registers --repo and --discover for root/scan.
+// --repo can take multiple comma-separated paths; --discover searches a
+// given path's subdirectories for git repos and prompts the user to pick.
+func addMultiRepoFlag(cmd *cobra.Command) {
+	cmd.Flags().StringSliceVarP(&flagRepos, "repo", "r", nil, "Path(s) to git repositories, comma-separated. Multiple repos requires being logged in. If omitted and the current directory isn't a repo, you'll be prompted to pick from repos found in subdirectories (requires login).")
+	cmd.Flags().StringVar(&flagDiscoverPath, "discover", "", "Search this path's subdirectories for git repos and prompt to select which to scan (requires login)")
 }
 
 func init() {
@@ -352,6 +523,14 @@ func init() {
 	addSharedFlags(busfactorCmd)
 	addSharedFlags(developersCmd)
 	addSharedFlags(flowsCmd)
+
+	addMultiRepoFlag(rootCmd)
+	addMultiRepoFlag(scanCmd)
+	addSingleRepoFlag(insightsCmd)
+	addSingleRepoFlag(heatmapCmd)
+	addSingleRepoFlag(busfactorCmd)
+	addSingleRepoFlag(developersCmd)
+	addSingleRepoFlag(flowsCmd)
 
 	loginCmd.Flags().StringVar(&flagLoginToken, "token", "", "Dashboard API token")
 
