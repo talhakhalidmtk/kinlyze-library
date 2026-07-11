@@ -21,7 +21,7 @@ func TestListRepos(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		withTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"ok":true,"repos":[{"id":"1","repo_path":"/x/api","repo_name":"api","project_name":"default","schedule":"weekdays"}]}`))
+			_, _ = w.Write([]byte(`{"ok":true,"repos":[{"id":"1","repo_path":"/x/api","repo_name":"api","project_name":"default","schedule":"weekdays"}]}`))
 		})
 		repos, err := ListRepos("tok")
 		if err != nil {
@@ -59,7 +59,7 @@ func TestListRepos(t *testing.T) {
 				sawAPIKey = true
 			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"ok":true,"repos":[]}`))
+			_, _ = w.Write([]byte(`{"ok":true,"repos":[]}`))
 		})
 		if _, err := ListRepos("tok"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -74,7 +74,7 @@ func TestSyncStatus(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		withTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"ok":true}`))
+			_, _ = w.Write([]byte(`{"ok":true}`))
 		})
 		if err := SyncStatus("tok", "api", "success", ""); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -84,7 +84,7 @@ func TestSyncStatus(t *testing.T) {
 	t.Run("non-2xx surfaces the response's error field", func(t *testing.T) {
 		withTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(`{"ok":false,"error":"plan cap reached"}`))
+			_, _ = w.Write([]byte(`{"ok":false,"error":"plan cap reached"}`))
 		})
 		err := SyncStatus("tok", "api", "error", "boom")
 		if err == nil || err.Error() != "plan cap reached" {

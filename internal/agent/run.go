@@ -48,7 +48,7 @@ func Install(token string) (string, error) {
 
 	// Best-effort: Run() logs its own outcome, so a failure here doesn't
 	// fail the install — the next scheduled/catch-up trigger will retry.
-	Run()
+	_ = Run()
 
 	return location, nil
 }
@@ -141,34 +141,42 @@ func isScheduledWeekday(t time.Time) bool {
 func runOneRepo(token string, repo Repo) {
 	defer func() {
 		if r := recover(); r != nil {
-			msg := fmt.Sprintf("panic during scan: %v", r)
-			SyncStatus(token, repo.RepoName, "error", msg)
-			Logf("%s: error - %s", repo.RepoName, msg)
+			reportOutcome(token, repo, "error", fmt.Sprintf("panic during scan: %v", r))
 		}
 	}()
 
 	repoRoot, err := resolveRepoRoot(repo.RepoPath)
 	if err != nil {
-		SyncStatus(token, repo.RepoName, "error", err.Error())
-		Logf("%s: error - %s", repo.RepoName, err.Error())
+		reportOutcome(token, repo, "error", err.Error())
 		return
 	}
 
 	result, err := scoring.AnalyzeRepo(repoRoot, scanDays, scanMinCommits, scanExcludeBots, nil, nil)
 	if err != nil {
-		SyncStatus(token, repo.RepoName, "error", err.Error())
-		Logf("%s: error - %s", repo.RepoName, err.Error())
+		reportOutcome(token, repo, "error", err.Error())
 		return
 	}
 
 	if err := upload.SendForAgent(token, repo.RepoName, repo.ProjectName, result); err != nil {
-		SyncStatus(token, repo.RepoName, "error", err.Error())
-		Logf("%s: error - %s", repo.RepoName, err.Error())
+		reportOutcome(token, repo, "error", err.Error())
 		return
 	}
 
-	SyncStatus(token, repo.RepoName, "success", "")
-	Logf("%s: success", repo.RepoName)
+	reportOutcome(token, repo, "success", "")
+}
+
+// reportOutcome syncs a repo's scan outcome to the Dashboard and logs it
+// locally. If the sync itself fails, that's logged too — otherwise a
+// Dashboard hiccup would leave the only unattended feedback loop silent.
+func reportOutcome(token string, repo Repo, status, message string) {
+	if err := SyncStatus(token, repo.RepoName, status, message); err != nil {
+		Logf("%s: could not report status to Dashboard: %s", repo.RepoName, err)
+	}
+	if status == "success" {
+		Logf("%s: success", repo.RepoName)
+		return
+	}
+	Logf("%s: error - %s", repo.RepoName, message)
 }
 
 // resolveRepoRoot validates repoPath the same way the interactive CLI does

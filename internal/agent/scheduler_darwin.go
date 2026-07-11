@@ -54,7 +54,7 @@ func installScheduler() (string, error) {
 	uid := fmt.Sprintf("gui/%d", os.Getuid())
 	// Unload any previously installed version first; ignore errors, since
 	// it's fine (and expected on a first install) if nothing was loaded.
-	exec.Command("launchctl", "bootout", uid, plistPath).Run()
+	_ = exec.Command("launchctl", "bootout", uid, plistPath).Run()
 
 	var stderr strings.Builder
 	cmd := exec.Command("launchctl", "bootstrap", uid, plistPath)
@@ -81,7 +81,7 @@ func uninstallScheduler() (string, error) {
 
 	uid := fmt.Sprintf("gui/%d", os.Getuid())
 	// Best-effort: it's fine if this fails because the job isn't loaded.
-	exec.Command("launchctl", "bootout", uid, plistPath).Run()
+	_ = exec.Command("launchctl", "bootout", uid, plistPath).Run()
 
 	if err := os.Remove(plistPath); err != nil && !os.IsNotExist(err) {
 		return "", fmt.Errorf("could not remove %s: %w", plistPath, err)

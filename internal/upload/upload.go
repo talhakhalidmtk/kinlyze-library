@@ -50,11 +50,11 @@ func send(token, repoName, projectName string, result *scoring.Result) (statusCo
 	if err != nil {
 		return 0, responseBody{}, err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	data, _ := io.ReadAll(httpResp.Body)
 	var parsed responseBody
-	json.Unmarshal(data, &parsed) // best-effort; a non-JSON body just leaves Error empty
+	_ = json.Unmarshal(data, &parsed) // best-effort; a non-JSON body just leaves Error empty
 
 	return httpResp.StatusCode, parsed, nil
 }
@@ -65,19 +65,19 @@ func send(token, repoName, projectName string, result *scoring.Result) (statusCo
 func Report(token, repoName string, result *scoring.Result) {
 	statusCode, _, err := send(token, repoName, "", result)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  Dashboard sync skipped: %s\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "  Dashboard sync skipped: %s\n", err)
 		return
 	}
 
 	switch statusCode {
 	case http.StatusOK, http.StatusCreated:
-		fmt.Fprintln(os.Stderr, "  ✓ Report synced to your Kinlyze Dashboard.")
+		_, _ = fmt.Fprintln(os.Stderr, "  ✓ Report synced to your Kinlyze Dashboard.")
 	case http.StatusUnauthorized:
-		fmt.Fprintln(os.Stderr, "  ✖ Dashboard sync failed: 401 invalid or revoked token. Run 'kinlyze login --token <TOKEN>' again.")
+		_, _ = fmt.Fprintln(os.Stderr, "  ✖ Dashboard sync failed: 401 invalid or revoked token. Run 'kinlyze login --token <TOKEN>' again.")
 	case http.StatusPaymentRequired:
-		fmt.Fprintln(os.Stderr, "  ✖ Dashboard sync failed: 402 upgrade to Pro/Team to enable automatic sync.")
+		_, _ = fmt.Fprintln(os.Stderr, "  ✖ Dashboard sync failed: 402 upgrade to Pro/Team to enable automatic sync.")
 	default:
-		fmt.Fprintf(os.Stderr, "  ✖ Dashboard sync failed: unexpected response (%d).\n", statusCode)
+		_, _ = fmt.Fprintf(os.Stderr, "  ✖ Dashboard sync failed: unexpected response (%d).\n", statusCode)
 	}
 }
 

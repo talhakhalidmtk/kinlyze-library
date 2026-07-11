@@ -78,7 +78,7 @@ func outputJSONMulti(results []*scoring.Result) error {
 func runAnalysis(repoInput string) *scoring.Result {
 	// Apply flags
 	if flagNoColor || flagJSON {
-		os.Setenv("NO_COLOR", "1")
+		_ = os.Setenv("NO_COLOR", "1")
 	}
 
 	// Validate
@@ -217,7 +217,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 // or multi-repo scanning) is used without a saved token.
 func errLoginRequired(feature string) error {
 	return fmt.Errorf(
-		"%s requires a Kinlyze Dashboard account.\n  Run 'kinlyze login --token <TOKEN>' to enable it, or scan a single repo without this flag.",
+		"%s requires a Kinlyze Dashboard account.\n  Run 'kinlyze login --token <TOKEN>' to enable it, or scan a single repo without this flag",
 		feature,
 	)
 }

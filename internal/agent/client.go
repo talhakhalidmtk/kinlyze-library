@@ -67,7 +67,7 @@ func post(token, path string, payload any) (statusCode int, body []byte, err err
 	if err != nil {
 		return 0, nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	buf := new(bytes.Buffer)
 	if _, err := buf.ReadFrom(resp.Body); err != nil {
@@ -117,7 +117,7 @@ func SyncStatus(token, repoName, status, errorMessage string) error {
 	}
 	if statusCode != http.StatusOK {
 		var parsed apiResponse
-		json.Unmarshal(body, &parsed)
+		_ = json.Unmarshal(body, &parsed) // best-effort; a non-JSON body just leaves Error empty
 		if parsed.Error != "" {
 			return fmt.Errorf("%s", parsed.Error)
 		}

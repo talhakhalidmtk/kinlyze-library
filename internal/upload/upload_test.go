@@ -31,7 +31,7 @@ func TestSendForAgent(t *testing.T) {
 			}
 			gotProjectName = body.ProjectName
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"ok":true,"report_id":"1"}`))
+			_, _ = w.Write([]byte(`{"ok":true,"report_id":"1"}`))
 		})
 		if err := SendForAgent("tok", "api", "default", result); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -44,7 +44,7 @@ func TestSendForAgent(t *testing.T) {
 	t.Run("non-2xx surfaces the response's error field", func(t *testing.T) {
 		withTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(`{"ok":false,"error":"plan cap reached"}`))
+			_, _ = w.Write([]byte(`{"ok":false,"error":"plan cap reached"}`))
 		})
 		err := SendForAgent("tok", "api", "default", result)
 		if err == nil || err.Error() != "plan cap reached" {

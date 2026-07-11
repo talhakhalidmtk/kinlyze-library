@@ -63,7 +63,7 @@ func markRanToday() {
 	if err != nil {
 		return
 	}
-	os.WriteFile(path, data, 0600)
+	_ = os.WriteFile(path, data, 0600) // best-effort; see doc comment
 }
 
 // clearState removes the run-tracking state file, if present, so a future
@@ -75,5 +75,5 @@ func clearState() {
 	if err != nil {
 		return
 	}
-	os.Remove(path)
+	_ = os.Remove(path) // best-effort; a missing file is not an error either
 }
