@@ -798,7 +798,7 @@ func renderAlerts(alerts []scoring.Alert) {
 
 // Render prints the full terminal report with sections ordered by importance:
 // Summary → Insights → Alerts → Heat Map → Bus Factor → Developers → Flows
-func Render(r *scoring.Result, top int) {
+func Render(r *scoring.Result, top int, loggedIn bool) {
 	printBanner()
 	fmt.Println()
 	renderSummary(r)
@@ -809,10 +809,26 @@ func Render(r *scoring.Result, top int) {
 	RenderDeveloperProfiles(r)
 	RenderFlowRisk(r)
 
+	RenderFooter(loggedIn)
+}
+
+// RenderFooter prints the closing tagline, shown after every command's
+// output (except --json). The CLI login upsell is omitted once the user is
+// already logged in.
+func RenderFooter(loggedIn bool) {
 	fmt.Printf("  %s\n", div())
-	fmt.Printf("  %s  %s\n\n",
-		grey("Full dashboard · Slack/email alerts · GitHub integration →"),
+	fmt.Printf("  %s  %s\n",
+		grey("Full dashboard · Slack/email alerts →"),
 		cyan("kinlyze.com"),
+	)
+	if loggedIn {
+		fmt.Println()
+		return
+	}
+	fmt.Printf("  %s%s%s\n\n",
+		grey("Prefer this automatic? Paid plans skip the manual upload - sign in from the CLI ("),
+		cyan("kinlyze login"),
+		grey(") and every kinlyze scan lands in your Dashboard automatically."),
 	)
 }
 
@@ -848,6 +864,14 @@ func RenderJSON(r *scoring.Result) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(r)
+}
+
+// RenderJSONMulti prints multiple results as an indented JSON array.
+// Used when --repo resolves to more than one repository.
+func RenderJSONMulti(results []*scoring.Result) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(results)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

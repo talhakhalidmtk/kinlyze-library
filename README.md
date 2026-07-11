@@ -129,6 +129,9 @@ kinlyze heatmap --top 20
 
 # JSON for CI pipelines
 kinlyze --json | jq '.maturity'
+
+# Optional: log in to unlock multi-repo scans and Dashboard sync
+kinlyze login --token <TOKEN>
 ```
 
 ---
@@ -137,18 +140,27 @@ kinlyze --json | jq '.maturity'
 
 Kinlyze provides focused subcommands so you can get exactly the view you need.
 
-| Command | What it shows |
-|---------|---------------|
-| `kinlyze` | Full scan — all sections |
-| `kinlyze scan` | Same as above (explicit) |
-| `kinlyze insights` | Key insights + risk alerts — the executive summary |
-| `kinlyze heatmap` | Knowledge heat map — every module ranked by risk |
-| `kinlyze busfactor` | Bus factor deep dive — at-risk modules grouped by owner |
-| `kinlyze developers` | Developer profiles — departure impact per engineer |
-| `kinlyze flows` | User flow risk — end-to-end feature ownership |
-| `kinlyze version` | Print version |
+| Command | What it shows | Requires |
+|---------|---------------|----------|
+| `kinlyze` | Full scan — all sections | — |
+| `kinlyze scan` | Same as above (explicit). The only command that can scan multiple repos in one call (`--repo a,b,c`) or auto-discover repos (`--discover <path>`) | Dashboard account for 2+ repos or `--discover` |
+| `kinlyze insights` | Key insights + risk alerts — the executive summary | — |
+| `kinlyze heatmap` | Knowledge heat map — every module ranked by risk | — |
+| `kinlyze busfactor` | Bus factor deep dive — at-risk modules grouped by owner | — |
+| `kinlyze developers` | Developer profiles — departure impact per engineer | — |
+| `kinlyze flows` | User flow risk — end-to-end feature ownership | — |
+| `kinlyze version` | Print version | — |
+| `kinlyze login --token <TOKEN>` | Save a Dashboard token so scans sync automatically | Dashboard account |
+| `kinlyze logout` | Remove the saved Dashboard token | — |
+| `kinlyze agent install --token <TOKEN>` | One-time setup: save the token, register the OS scheduler, run an initial scan | **Pro/Team** |
+| `kinlyze agent run` | Run one scheduled scan pass (invoked by the scheduler — not for interactive use) | **Pro/Team** |
+| `kinlyze agent uninstall` | Remove the scheduler entry installed by `agent install` | — |
 
-All commands accept the same flags (`--repo`, `--days`, `--json`, etc.).
+All scan commands accept the same flags (`--repo`, `--days`, `--json`, etc.).
+See [Dashboard account (optional)](#dashboard-account-optional) and
+[Kinlyze Agent](#kinlyze-agent--scheduled-scans-proteam) below for the login
+and agent commands, and [docs/cli-reference.md](docs/cli-reference.md) for
+the full command/flag/plan-tier reference.
 
 ### Examples
 
@@ -164,6 +176,12 @@ kinlyze bf
 
 # Developer profiles aliased as 'devs'
 kinlyze devs --days 90
+
+# Multiple repos in one scan (requires a Dashboard account)
+kinlyze --repo ~/code/api,~/code/web,~/code/worker
+
+# Auto-discover repos in a folder and pick which to scan (requires a Dashboard account)
+kinlyze --discover ~/code
 
 # User flow risk
 kinlyze flows
@@ -182,9 +200,12 @@ if [ "$CRITICAL" -gt 0 ]; then echo "⚠ Runtime risk detected"; fi
 
 ## All flags
 
+### Scan flags
+
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--repo` | `-r` | `.` | Path to git repository |
+| `--repo` | `-r` | `.` | Path to a git repository. On `kinlyze`/`kinlyze scan` this accepts a comma-separated list (`a,b,c`) — a single path is fully local, 2+ requires a Dashboard account. On `insights`/`heatmap`/`busfactor`/`developers`/`flows` it's always a single path. |
+| `--discover` | — | — | `kinlyze`/`kinlyze scan` only. Search this path's immediate subdirectories for git repos and prompt to pick which to scan. Requires a Dashboard account. |
 | `--days` | `-d` | `365` | Days of history to analyze |
 | `--top` | `-t` | `0` (all) | Show only top N riskiest modules |
 | `--min-commits` | — | `2` | Minimum commits for a file to be included |
@@ -192,6 +213,68 @@ if [ "$CRITICAL" -gt 0 ]; then echo "⚠ Runtime risk detected"; fi
 | `--json` | — | false | Output raw JSON |
 | `--no-bots` | — | true | Exclude bot/CI commits (dependabot, renovate, etc.) |
 | `--exclude-emails` | — | — | Comma-separated email addresses to exclude |
+
+### Account flags
+
+| Flag | Default | Applies to | Description |
+|------|---------|-----------|-------------|
+| `--token` | — (required) | `kinlyze login`, `kinlyze agent install` | Dashboard API token, from your Kinlyze Dashboard |
+
+---
+
+## Dashboard account (optional)
+
+Kinlyze works fully standalone with no account. Logging in unlocks a few
+extra things — none of it required for day-to-day use:
+
+```bash
+kinlyze login --token <TOKEN>     # get a token from kinlyze.com
+kinlyze logout                    # remove it again — scans go back to fully local
+```
+
+| Unlocked by logging in | Plan required |
+|---|---|
+| Scanning multiple repos in one call (`--repo a,b,c`) | Any Dashboard account |
+| Repo auto-discovery (`--discover <path>`) | Any Dashboard account |
+| Automatic report sync to the Dashboard after every scan | Pro/Team |
+| Kinlyze Agent — unattended scheduled scans | Pro/Team |
+
+The token is saved to `~/.kinlyze/credentials` (mode `0600`). Sync is
+best-effort and additive: a failed/missing token, or an account without
+Pro/Team, never blocks or fails the local scan — you just won't see the
+report on the Dashboard.
+
+---
+
+## Kinlyze Agent — scheduled scans (Pro/Team)
+
+Agent runs Kinlyze unattended on a schedule and syncs each report to your
+Dashboard automatically. Register your repos on kinlyze.com, then:
+
+```bash
+kinlyze agent install --token <TOKEN>
+```
+
+This validates the token against the Dashboard, saves it (same credentials
+as `kinlyze login`), registers an OS scheduler entry, and runs an initial
+scan immediately rather than waiting for the first scheduled trigger.
+
+- **Schedule:** weekdays at 9am local time.
+- **Machine off or asleep at 9am?** That run is skipped, but a catch-up
+  trigger fires the next time the machine is available (at most once per
+  weekday) — launchd `RunAtLoad` on macOS, cron `@reboot` on Linux, a Task
+  Scheduler "at startup" trigger on Windows.
+- **Logs:** every run appends a summary line per repo to `~/.kinlyze/agent.log`
+  — the only feedback loop, since there's no one watching an unattended run.
+
+```bash
+kinlyze agent run          # invoked by the scheduler; not for interactive use
+kinlyze agent uninstall    # remove the scheduler entry
+```
+
+`agent uninstall` only removes the scheduler entry — the saved token stays
+in place (run `kinlyze logout` separately to remove that). Run `kinlyze
+agent install --token <TOKEN>` again any time to re-enable scheduled scans.
 
 ---
 
@@ -359,13 +442,13 @@ Kinlyze reads only what Git already knows — it never sees your source code.
 
 **What Kinlyze never reads:** file contents, diffs, commit messages, branch names beyond the current branch, remotes, tags, or any data outside the repository directory.
 
-**No network requests.** The CLI runs entirely offline. Nothing is sent anywhere. No telemetry, no analytics, no license checks. Your code stays on your machine.
+**Local by default, network only if you opt in.** With no `kinlyze login`, the CLI makes zero network requests — it runs entirely offline and nothing is sent anywhere. No telemetry, no analytics, no license checks. `kinlyze login` and `kinlyze agent install` are explicit, one-time opt-ins that send only the same Git metadata described above — never source code — to your own Kinlyze Dashboard account. Run `kinlyze logout` and `kinlyze agent uninstall` to go back to fully offline.
 
 ---
 
 ## Architecture
 
-The CLI is open source and runs entirely on your local machine — it requires no account, no server, and no internet connection. The dashboard (kinlyze.com) is a separate commercial product that builds on the same analysis engine and adds team collaboration, trend history, and scheduled reports. The CLI and the dashboard are independent — you can use one without the other.
+The CLI is open source and runs entirely on your local machine by default — no account, no server, no internet connection required for any scan command. The dashboard (kinlyze.com) is a separate commercial product that builds on the same analysis engine and adds team collaboration, trend history, and scheduled reports. `kinlyze login` and `kinlyze agent` are the CLI's opt-in bridge to it; otherwise the CLI and the dashboard are independent — you can use the CLI without ever creating an account.
 
 ---
 
@@ -527,14 +610,28 @@ make build
 kinlyze/
 ├── main.go                      Entry point
 ├── cmd/
-│   └── root.go                  Cobra CLI — subcommands and flags
+│   ├── root.go                  Cobra CLI — scan subcommands, flags, login/logout
+│   └── agent.go                 Cobra CLI — agent install/run/uninstall
 ├── internal/
 │   ├── git/
 │   │   └── git.go               Git history reader (numstat, bot detection, impact paths)
 │   ├── scoring/
 │   │   └── scoring.go           Scoring, maturity, flows, insights, alerts
-│   └── renderer/
-│       └── renderer.go          ANSI terminal output
+│   ├── renderer/
+│   │   └── renderer.go          ANSI terminal + JSON output
+│   ├── auth/
+│   │   └── auth.go              Local Dashboard credentials (~/.kinlyze/credentials)
+│   ├── upload/
+│   │   └── upload.go            Dashboard report sync
+│   └── agent/                   Kinlyze Agent — scheduled unattended scans
+│       ├── client.go            agent-repos-list / agent-sync-status HTTP client
+│       ├── run.go               Install/Run orchestration
+│       ├── log.go               ~/.kinlyze/agent.log writer
+│       ├── state.go             Once-per-day dedupe state
+│       ├── cron.go              Crontab entry merge (pure, tested)
+│       └── scheduler_*.go       Per-OS scheduler install/uninstall (launchd/cron/Task Scheduler)
+├── docs/
+│   └── cli-reference.md         Full command/flag/plan-tier reference
 ├── scripts/
 │   └── install.sh               Universal install script
 ├── .goreleaser.yaml             Cross-platform release config
@@ -580,5 +677,6 @@ MIT © [Kinlyze](https://kinlyze.com)
 ## Links
 
 - Website: [kinlyze.com](https://kinlyze.com)
+- CLI reference (every command, flag, and plan tier): [docs/cli-reference.md](docs/cli-reference.md)
 - Waitlist: [kinlyze.com/#waitlist](https://kinlyze.com/#waitlist)
 - Issues: [github.com/talhakhalidmtk/kinlyze-library/issues](https://github.com/talhakhalidmtk/kinlyze-library/issues)
